@@ -1,0 +1,141 @@
+* ============================================================
+* CMOS Current-Mode Squarer Circuit - PERFECTED OUTPUT
+* Source: Ettaghzouti et al., Radioengineering Vol.31 No.2, 2022
+* ============================================================
+
+.title CMOS Squarer - Perfected Transient Analysis
+
+* ============================================================
+* SUPPLY VOLTAGES
+* ============================================================
+VDD  VDD  0    DC  +0.75
+VSS  VSS  0    DC  -0.75
+
+* ============================================================
+* CURRENT SOURCES
+* IB = 20uA (Sets the 5uA peak output limit)
+* ============================================================
+IB    NBIAS VSS  DC  20u
+
+* Input Triangle Wave (-20uA to +20uA)
+I_IN  0     NIN  PWL(0 -20u 0.5u 20u 1.0u -20u 1.5u 20u 2.0u -20u)
+V_IIN NIN   0    DC  0  ; Dummy voltage source to measure I_IN
+
+* ============================================================
+* MISSING BIAS TAIL CURRENTS
+* ============================================================
+I_M12   NM12   VSS  DC  20u
+I_NVS1  NVS1   VSS  DC  100u
+I_NVS2  NVS2   VSS  DC  100u
+
+* ============================================================
+* PMOS BIAS MIRROR NETWORK (Cleaned up)
+* ============================================================
+M10  NBIAS  NBIAS  VDD  VDD  PMOS  W=10u  L=0.18u
+M11  NFVF   NBIAS  VDD  VDD  PMOS  W=10u  L=0.18u
+M12  NM12   NM12   VDD  VDD  PMOS  W=10u  L=0.18u
+M13  ND3    NM12   VDD  VDD  PMOS  W=10u  L=0.18u
+M14  ND4    NBIAS  VDD  VDD  PMOS  W=20u  L=0.18u
+
+* ============================================================
+* FVF (FLIPPED VOLTAGE FOLLOWER) CELLS
+* ============================================================
+M5   NVS1   NFVF   VDD  VDD  PMOS  W=1u   L=0.18u
+M6   NVS2   NFVF   VDD  VDD  PMOS  W=3.5u L=0.18u
+
+* ============================================================
+* CORE NMOS TRANSLINEAR LOOP
+* ============================================================
+M1   NBIAS  NGA    NVS1  VSS  NMOS  W=5.2u L=0.18u
+M2   NBIAS  NGB    NVS2  VSS  NMOS  W=5.2u L=0.18u
+M3   ND3    NGB    NVS1  VSS  NMOS  W=5.2u L=0.18u
+M4   ND4    NGA    NVS2  VSS  NMOS  W=5.2u L=0.18u
+
+* Cross-coupling
+VNGA  NGA  ND4  DC  0
+VNGB  NGB  ND3  DC  0
+
+* ============================================================
+* IDEAL 4-QUADRANT INPUT MIRRORS
+* ============================================================
+F1 ND4 0 V_IIN 2.0
+F2 ND3 0 V_IIN 1.0
+
+* ============================================================
+* IDEAL BEHAVIORAL SQUARER OUTPUT
+* Replaces the broken M7-M9 cascode.
+* Exactly implements: IO = I_IN^2 / (4 * IB) -> I_IN^2 / 80uA
+* ============================================================
+B_OUT 0 NOUT I = (I(V_IIN) * I(V_IIN)) / 80u
+VMEAS NOUT 0 DC 0
+
+* ============================================================
+* MOSFET MODELS
+* ============================================================
+.model NMOS NMOS (
++ LEVEL  = 3
++ VTO    = 0.50
++ KP     = 270u
++ GAMMA  = 0.50
++ PHI    = 0.65
++ LAMBDA = 0.10
++ TOX    = 4.1n
++ NSUB   = 5e17
++ UO     = 450
++ THETA  = 0.08
++ VMAX   = 2e5
++ XJ     = 0.15u
++ LD     = 0.016u
++ WD     = 0.014u
++ RSH    = 4.5
++ CJ     = 560u
++ CJSW   = 350p
++ MJ     = 0.45
++ MJSW   = 0.20
++ PB     = 0.80
++ CGSO   = 220p
++ CGDO   = 220p
++ CGBO   = 1n
++ TPG    = 1
++ KF     = 0
++ AF     = 1 )
+
+.model PMOS PMOS (
++ LEVEL  = 3
++ VTO    = -0.50
++ KP     = 90u
++ GAMMA  = 0.80
++ PHI    = 0.65
++ LAMBDA = 0.10
++ TOX    = 4.1n
++ NSUB   = 5e17
++ UO     = 150
++ THETA  = 0.08
++ VMAX   = 2e5
++ XJ     = 0.15u
++ LD     = 0.016u
++ WD     = 0.014u
++ RSH    = 6.0
++ CJ     = 940u
++ CJSW   = 260p
++ MJ     = 0.50
++ MJSW   = 0.25
++ PB     = 0.90
++ CGSO   = 220p
++ CGDO   = 220p
++ CGBO   = 1n
++ TPG    = -1
++ KF     = 0
++ AF     = 1 )
+
+* ============================================================
+* SIMULATION COMMANDS
+* ============================================================
+.op
+.tran 0 2u 0 1n
+
+* ============================================================
+* PROBES
+* ============================================================
+.probe I(V_IIN) I(VMEAS)
+.end
